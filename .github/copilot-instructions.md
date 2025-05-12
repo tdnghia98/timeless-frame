@@ -1,0 +1,3 @@
+<!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
+
+This is a Next.js fullstack project using TypeScript. The project includes Google Drive integration, event creation, and guest uploads. Please ensure all generated code adheres to TypeScript best practices and follows the Next.js conventions.
