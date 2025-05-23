@@ -1,32 +1,35 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Event } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import EventCreationModal from '@/components/EventCreationModal';
+import { fetchSession } from '@/lib/utils/authService';
 
 export default function Dashboard() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [session, setSession] = useState<any>(null);
+
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    }
-    
-    if (status === 'authenticated') {
-      fetchEvents();
-    }
-  }, [status, router]);
-  
-  const fetchEvents = async () => {
+    fetchSession().then((sess) => {
+      if (!sess) {
+        router.push('/');
+      } else {
+        setSession(sess);
+        fetchEvents(sess.accessToken);
+      }
+    });
+  }, [router]);
+
+  const fetchEvents = async (token: string) => {
     try {
-      const response = await fetch('/api/events');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/events`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setEvents(data);
@@ -37,16 +40,16 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-  
+
   const handleEventCreated = (newEvent: Event) => {
     setEvents((prevEvents) => [...prevEvents, newEvent]);
     setIsModalOpen(false);
   };
-  
-  if (status === 'loading' || loading) {
+
+  if (loading) {
     return <div className="text-center py-10">Loading...</div>;
   }
-  
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-8">
