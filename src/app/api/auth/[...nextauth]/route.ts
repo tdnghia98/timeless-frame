@@ -69,21 +69,24 @@ export const authOptions: NextAuthOptions = {
 		},
 		async session({ session, token }) {
 			// Send properties to the client
+			console.log("App requesting session");
 			session.accessToken = token.accessToken as string;
 			session.refreshToken = token.refreshToken as string;
 			session.expiresAt = token.expiresAt as number;
+			console.log("Session:", session);
 
 			// In development, always return a mock session
-			if (process.env.NODE_ENV === "development") {
-				return {
-					...session,
-					user: {
-						name: "Development User",
-						email: "dev@example.com",
-						image: "https://via.placeholder.com/150",
-					},
-				};
-			}
+			// if (process.env.NODE_ENV === "development") {
+			// 	console.log("Development mode: returning mock session");
+			// 	return {
+			// 		...session,
+			// 		user: {
+			// 			name: "Development User",
+			// 			email: "dev@example.com",
+			// 			image: "https://via.placeholder.com/150",
+			// 		},
+			// 	};
+			// }
 			return session;
 		},
 		async jwt({ token, account }) {
@@ -94,13 +97,14 @@ export const authOptions: NextAuthOptions = {
 				token.expiresAt = account.expires_at;
 			}
 			// In development, always return a mock token
-			if (process.env.NODE_ENV === "development") {
-				return {
-					...token,
-					accessToken: "mock-access-token",
-					refreshToken: "mock-refresh-token",
-				};
-			}
+			// if (process.env.NODE_ENV === "development") {
+			// 	console.log("Development mode: returning mock token in JWT callback");
+			// 	return {
+			// 		...token,
+			// 		accessToken: "mock-access-token",
+			// 		refreshToken: "mock-refresh-token",
+			// 	};
+			// }
 			return token;
 		},
 	},

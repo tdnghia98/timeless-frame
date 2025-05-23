@@ -1,15 +1,22 @@
 import { google } from 'googleapis';
 import { Session } from 'next-auth';
 import { GoogleDriveFile } from '../types';
+import { Readable } from 'stream';
 
 // Create a new OAuth2 client using the access token
 const createDriveClient = (session: Session) => {
-  const oauth2Client = new google.auth.OAuth2();
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    'http://localhost:3000/api/auth/callback/google'
+  );
+  if (!session.refreshToken) {
+    console.error('[Google Drive] No refresh token found in session. This may cause invalid_grant errors.');
+  }
   oauth2Client.setCredentials({
     access_token: session.accessToken,
     refresh_token: session.refreshToken,
   });
-
   return google.drive({ version: 'v3', auth: oauth2Client });
 };
 
@@ -42,27 +49,22 @@ export async function uploadFileToDrive(
 ): Promise<GoogleDriveFile | null> {
   try {
     const drive = createDriveClient(session);
-    
     // Convert the file to an array buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
     const fileMetadata = {
       name: file.name,
       parents: [folderId],
     };
-    
     const media = {
       mimeType: file.type,
-      body: buffer,
+      body: Readable.from(buffer), // Use a stream here!
     };
-    
     const response = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
       fields: 'id, name, mimeType, webContentLink, webViewLink, thumbnailLink, size',
     });
-    
     return response.data as GoogleDriveFile;
   } catch (error) {
     console.error('Error uploading file:', error);

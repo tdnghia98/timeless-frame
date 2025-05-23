@@ -5,9 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import QRCode from "qrcode";
 import { createDriveFolder } from "@/lib/utils/google-drive";
 import { EventFormData } from "@/lib/types";
-
-// Mock database for MVP (replace with a real database in production)
-let events: any[] = [];
+import { prisma } from '@/lib/utils/prisma';
 
 // Create a new event
 export async function POST(req: NextRequest) {
@@ -41,30 +39,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate a unique event ID
+    // Generate a unique event ID, share URL, and QR code
     const eventId = uuidv4();
-
-    // Generate share URL and QR code
     const shareUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/events/${eventId}`;
     const qrCode = await QRCode.toDataURL(shareUrl);
 
-    // Create event object
-    const newEvent = {
-      id: eventId,
-      title: data.title,
-      description: data.description,
-      theme: data.theme,
-      date: new Date(data.date),
-      userId: session.user?.email || "",
-      folderId,
-      shareUrl,
-      qrCode,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Save event to database (mock for MVP)
-    events.push(newEvent);
+    // Create event in the database
+    const newEvent = await prisma.event.create({
+      data: {
+        id: eventId,
+        title: data.title,
+        description: data.description,
+        theme: data.theme,
+        date: new Date(data.date),
+        userId: session.user?.email || "",
+        folderId,
+        shareUrl,
+        qrCode,
+      },
+    });
 
     return NextResponse.json(newEvent, { status: 201 });
   } catch (error) {
@@ -87,11 +80,21 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    // Filter events by user ID (email)
-    const userEvents = events.filter(
-      (event) => event.userId === session.user?.email
-    );
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get("eventId");
+    if (eventId) {
+      // Return single event for manage page
+      const event = await prisma.event.findUnique({ where: { id: eventId, userId: session.user?.email || "" } });
+      if (!event) {
+        return NextResponse.json({ error: "Event not found" }, { status: 404 });
+      }
+      return NextResponse.json(event);
+    }
+    // Fetch events for the authenticated user from the database
+    const userEvents = await prisma.event.findMany({
+      where: { userId: session.user?.email || "" },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return NextResponse.json(userEvents);
   } catch (error) {
@@ -101,4 +104,31 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Get a single event by eventId (for manage page)
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const { eventId, title, description, date } = await req.json();
+    if (!eventId || !title || !description || !date) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+    const updated = await prisma.event.update({
+      where: { id: eventId, userId: session.user?.email || "" },
+      data: { title, description, date: new Date(date) },
+    });
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Error updating event:", error);
+    return NextResponse.json({ error: "Failed to update event" }, { status: 500 });
+  }
+}
+
+// Get a single event by eventId (for manage page)
+export async function HEAD(req: NextRequest) {
+  // Not implemented
 }

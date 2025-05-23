@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Event, Upload } from '@/lib/types';
 import UploadForm from '@/components/UploadForm';
 import PhotoGallery from '@/components/PhotoGallery';
@@ -14,11 +14,23 @@ export default function EventPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  const fetchUploads = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/uploads?eventId=${eventId}`);
+      if (!response.ok) throw new Error('Failed to load photos');
+      const uploadsData = await response.json();
+      setUploads(uploadsData);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while loading uploads');
+    }
+  }, [eventId]);
+
   useEffect(() => {
     if (eventId) {
       fetchEventDetails();
+      fetchUploads();
     }
-  }, [eventId]);
+  }, [eventId, fetchUploads]);
   
   const fetchEventDetails = async () => {
     try {
@@ -67,7 +79,8 @@ export default function EventPage() {
   };
   
   const handleNewUpload = (newUpload: Upload) => {
-    setUploads(prev => [...prev, newUpload]);
+    // After a successful upload, re-fetch uploads from the server
+    fetchUploads();
   };
   
   if (loading) {

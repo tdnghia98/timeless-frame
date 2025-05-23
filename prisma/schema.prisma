@@ -1,0 +1,40 @@
+// Prisma schema for WedMemory
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  theme       String?
+  date        DateTime
+  userId      String
+  folderId    String
+  shareUrl    String
+  qrCode      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  uploads     Upload[]
+}
+
+model Upload {
+  id           String   @id @default(uuid())
+  eventId      String
+  fileName     String
+  fileType     String
+  fileSize     Int
+  fileId       String
+  thumbnailUrl String?
+  downloadUrl  String?
+  uploadedBy   String?
+  createdAt    DateTime @default(now())
+  status       String   // 'pending' | 'approved' | 'rejected'
+  event        Event    @relation(fields: [eventId], references: [id])
+}

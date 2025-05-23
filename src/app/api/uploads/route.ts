@@ -3,9 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { v4 as uuidv4 } from "uuid";
 import { uploadFileToDrive } from "@/lib/utils/google-drive";
-
-// Mock database for MVP (replace with a real database in production)
-let uploads: any[] = [];
+import { prisma } from '@/lib/utils/prisma';
 
 // Create a new upload
 export async function POST(req: NextRequest) {
@@ -38,20 +36,14 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
-    
-    // Mock event lookup (in production, retrieve from database)
-    const event = {
-      id: eventId,
-      folderId: process.env.MOCK_FOLDER_ID || "your_mock_folder_id", // This would be a real folder ID in production
-    };
-    
-    if (!event.folderId) {
+    // Look up the event by eventId using Prisma
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event || !event.folderId) {
       return NextResponse.json(
         { error: "Event folder not found" },
         { status: 404 }
       );
     }
-    
     // Upload file to Google Drive
     const driveFile = await uploadFileToDrive(session, file, event.folderId);
     if (!driveFile) {
@@ -60,26 +52,21 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    
-    // Create upload record
-    const uploadId = uuidv4();
-    const newUpload = {
-      id: uploadId,
-      eventId,
-      fileName: file.name,
-      fileType: file.type,
-      fileSize: file.size,
-      fileId: driveFile.id,
-      thumbnailUrl: driveFile.thumbnailLink,
-      downloadUrl: driveFile.webContentLink,
-      uploadedBy: guestName || guestEmail || "Anonymous Guest",
-      createdAt: new Date(),
-      status: 'pending', // Require host approval before showing in gallery
-    };
-    
-    // Save upload to database (mock for MVP)
-    uploads.push(newUpload);
-    
+    // Create upload record in the database
+    const uploadedBy = guestName || guestEmail || session.user?.name || session.user?.email || "Anonymous Guest";
+    const newUpload = await prisma.upload.create({
+      data: {
+        eventId,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        fileId: driveFile.id,
+        thumbnailUrl: driveFile.thumbnailLink,
+        downloadUrl: driveFile.webContentLink,
+        uploadedBy,
+        status: 'pending',
+      },
+    });
     return NextResponse.json(newUpload, { status: 201 });
   } catch (error) {
     console.error("Error handling upload:", error);
@@ -112,8 +99,11 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    // Filter uploads by event ID
-    const eventUploads = uploads.filter((upload) => upload.eventId === eventId);
+    // Fetch uploads from the database
+    const eventUploads = await prisma.upload.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'desc' },
+    });
     
     return NextResponse.json(eventUploads);
   } catch (error) {
