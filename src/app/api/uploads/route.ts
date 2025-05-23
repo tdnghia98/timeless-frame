@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { v4 as uuidv4 } from "uuid";
-import { uploadFileToDrive } from "@/lib/utils/google-drive";
+import { uploadFileToDriveWithRefreshToken } from "@/lib/utils/google-drive";
 import { prisma } from '@/lib/utils/prisma';
+import { decrypt, isInvalidGrantError } from "@/lib/utils/crypto";
+import { emailer } from "@/lib/utils/emailer";
 
 // Create a new upload
 export async function POST(req: NextRequest) {
@@ -38,14 +40,32 @@ export async function POST(req: NextRequest) {
     }
     // Look up the event by eventId using Prisma
     const event = await prisma.event.findUnique({ where: { id: eventId } });
-    if (!event || !event.folderId) {
+    if (!event || !event.folderId || !event.authorRefreshToken) {
       return NextResponse.json(
-        { error: "Event folder not found" },
+        { error: "Event folder or author credentials not found" },
         { status: 404 }
       );
     }
-    // Upload file to Google Drive
-    const driveFile = await uploadFileToDrive(session, file, event.folderId);
+    // Upload file to Google Drive using the event author's refresh token
+    const decryptedRefreshToken = decrypt(event.authorRefreshToken);
+    let driveFile: any = null;
+    try {
+      driveFile = await uploadFileToDriveWithRefreshToken(decryptedRefreshToken, file, event.folderId);
+    } catch (error: any) {
+      if (isInvalidGrantError(error)) {
+        // Send real email notification to event owner
+        await emailer.sendMail({
+          to: event.userId,
+          subject: "Action Required: Reconnect your Google Drive to WedMemory",
+          text: `Hi!\n\nYour Google Drive connection for event '${event.title}' has expired or been revoked. Please sign in to WedMemory and reconnect your Google account to continue receiving uploads from your guests.\n\nThank you!`,
+        });
+        return NextResponse.json(
+          { error: "The event owner's Google Drive connection has expired. Please contact the event owner to reconnect their account." },
+          { status: 500 }
+        );
+      }
+      throw error;
+    }
     if (!driveFile) {
       return NextResponse.json(
         { error: "Failed to upload file to Google Drive" },

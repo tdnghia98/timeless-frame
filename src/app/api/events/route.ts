@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 import { createDriveFolder } from "@/lib/utils/google-drive";
 import { EventFormData } from "@/lib/types";
 import { prisma } from '@/lib/utils/prisma';
+import { encrypt } from "@/lib/utils/crypto";
 
 // Create a new event
 export async function POST(req: NextRequest) {
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
     const shareUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/events/${eventId}`;
     const qrCode = await QRCode.toDataURL(shareUrl);
 
+    // Save the event author's refresh token (encrypted)
+    const authorRefreshToken = session.refreshToken ? encrypt(session.refreshToken) : undefined;
+
     // Create event in the database
     const newEvent = await prisma.event.create({
       data: {
@@ -56,6 +60,7 @@ export async function POST(req: NextRequest) {
         folderId,
         shareUrl,
         qrCode,
+        authorRefreshToken,
       },
     });
 

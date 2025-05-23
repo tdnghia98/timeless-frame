@@ -10,18 +10,19 @@ datasource db {
 }
 
 model Event {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  theme       String?
-  date        DateTime
-  userId      String
-  folderId    String
-  shareUrl    String
-  qrCode      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  uploads     Upload[]
+  id                String   @id @default(uuid())
+  title             String
+  description       String
+  theme             String?
+  date              DateTime
+  userId            String
+  folderId          String
+  shareUrl          String
+  qrCode            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  uploads           Upload[]
+  authorRefreshToken String?  // New field for storing author's Google refresh token
 }
 
 model Upload {

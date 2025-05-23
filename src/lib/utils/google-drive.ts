@@ -107,3 +107,44 @@ export async function deleteFileFromDrive(session: Session, fileId: string): Pro
     return false;
   }
 }
+
+// Create a new OAuth2 client using a refresh token (for event author uploads)
+export const createDriveClientWithRefreshToken = (refreshToken: string) => {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    'http://localhost:3000/api/auth/callback/google'
+  );
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  return google.drive({ version: 'v3', auth: oauth2Client });
+};
+
+// Upload a file to a specific folder in Google Drive using a refresh token
+export async function uploadFileToDriveWithRefreshToken(
+  refreshToken: string,
+  file: File,
+  folderId: string
+): Promise<GoogleDriveFile | null> {
+  try {
+    const drive = createDriveClientWithRefreshToken(refreshToken);
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const fileMetadata = {
+      name: file.name,
+      parents: [folderId],
+    };
+    const media = {
+      mimeType: file.type,
+      body: Readable.from(buffer),
+    };
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: 'id, name, mimeType, webContentLink, webViewLink, thumbnailLink, size',
+    });
+    return response.data as GoogleDriveFile;
+  } catch (error) {
+    console.error('Error uploading file with refresh token:', error);
+    return null;
+  }
+}
