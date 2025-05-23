@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { EventFormData, Event } from '@/lib/types';
+import { StorageProviderOption } from '@/lib/types/models/storage-provider';
 
 interface EventCreationModalProps {
   onClose: () => void;
@@ -12,12 +13,20 @@ interface EventCreationModalProps {
 export default function EventCreationModal({ onClose, onEventCreated }: EventCreationModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState<StorageProviderOption[]>([]);
   const { register, handleSubmit, formState: { errors } } = useForm<EventFormData>();
-  
+
+  useEffect(() => {
+    // Fetch available storage providers from the backend
+    fetch('/api/storages', { method: 'OPTIONS' })
+      .then(res => res.json())
+      .then(data => setProviders(data.providers || []))
+      .catch(() => setProviders([]));
+  }, []);
+
   const onSubmit: SubmitHandler<EventFormData> = async (data) => {
     setIsSubmitting(true);
     setError(null);
-    
     try {
       const response = await fetch('/api/events', {
         method: 'POST',
@@ -26,12 +35,10 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
         },
         body: JSON.stringify(data),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to create event');
       }
-      
       const createdEvent = await response.json();
       onEventCreated(createdEvent);
     } catch (err: any) {
@@ -40,7 +47,7 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -52,14 +59,12 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
             </svg>
           </button>
         </div>
-        
         <form onSubmit={handleSubmit(onSubmit)} className="p-6">
           {error && (
             <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-md text-sm">
               {error}
             </div>
           )}
-          
           <div className="mb-4">
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
               Event Title *
@@ -75,7 +80,6 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
               <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
             )}
           </div>
-          
           <div className="mb-4">
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
               Description *
@@ -91,7 +95,6 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
               <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
             )}
           </div>
-          
           <div className="mb-4">
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
               Date *
@@ -106,8 +109,7 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
               <p className="mt-1 text-sm text-red-600">{errors.date.message}</p>
             )}
           </div>
-          
-          <div className="mb-6">
+          <div className="mb-4">
             <label htmlFor="theme" className="block text-sm font-medium text-gray-700 mb-1">
               Theme (Optional)
             </label>
@@ -124,7 +126,26 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
               <option value="party">Party</option>
             </select>
           </div>
-          
+          <div className="mb-6">
+            <label htmlFor="storageProvider" className="block text-sm font-medium text-gray-700 mb-1">
+              Storage Provider *
+            </label>
+            <select
+              id="storageProvider"
+              className="w-full p-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+              defaultValue={providers[0]?.value || ''}
+              {...register("storageProvider", { required: "Please select a storage provider" })}
+              disabled={providers.length === 0}
+            >
+              {providers.length === 0 && <option value="">Loading...</option>}
+              {providers.map((provider) => (
+                <option key={provider.value} value={provider.value}>{provider.label}</option>
+              ))}
+            </select>
+            {errors.storageProvider && (
+              <p className="mt-1 text-sm text-red-600">{errors.storageProvider.message}</p>
+            )}
+          </div>
           <div className="flex justify-end space-x-3">
             <button
               type="button"

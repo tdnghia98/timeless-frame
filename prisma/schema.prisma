@@ -23,6 +23,7 @@ model Event {
   updatedAt         DateTime @updatedAt
   uploads           Upload[]
   authorRefreshToken String?  // New field for storing author's Google refresh token
+  storageProvider    String? // 'gdrive', 'local', 's3', 'gcs', 'azure'
 }
 
 model Upload {

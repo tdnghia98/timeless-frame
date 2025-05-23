@@ -41,6 +41,7 @@ export interface EventFormData {
   description: string;
   date: Date | string;
   theme?: string;
+  storageProvider?: string; // Add this field for backend compatibility
 }
 
 export interface UploadFormData {
