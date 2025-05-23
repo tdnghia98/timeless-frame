@@ -1,13 +1,17 @@
 'use client';
 
-import { useSession, signIn, signOut } from 'next-auth/react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getSession, login, logout } from '@/lib/utils/authService';
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const [session, setSession] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
+
+  useEffect(() => {
+    getSession().then(setSession);
+  }, []);
+
   return (
     <nav className="bg-white shadow-md">
       <div className="container mx-auto px-4 py-3">
@@ -26,7 +30,7 @@ export default function Navbar() {
                   Dashboard
                 </Link>
                 <button 
-                  onClick={() => signOut()}
+                  onClick={logout}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
                 >
                   Sign Out
@@ -34,7 +38,7 @@ export default function Navbar() {
               </>
             ) : (
               <button 
-                onClick={() => signIn('google')}
+                onClick={() => login('google')}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
               >
                 Sign in with Google
@@ -73,7 +77,7 @@ export default function Navbar() {
                 </Link>
                 <button 
                   onClick={() => {
-                    signOut();
+                    logout();
                     setIsMenuOpen(false);
                   }}
                   className="block w-full text-left text-gray-700 hover:text-indigo-600 py-2"
@@ -84,7 +88,7 @@ export default function Navbar() {
             ) : (
               <button 
                 onClick={() => {
-                  signIn('google');
+                  login('google');
                   setIsMenuOpen(false);
                 }}
                 className="block w-full text-left text-gray-700 hover:text-indigo-600 py-2"

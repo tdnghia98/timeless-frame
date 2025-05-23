@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { EventFormData, Event } from '@/lib/types';
 import { StorageProviderOption } from '@/lib/types/models/storage-provider';
+import { fetchStorageProviders } from '@/lib/utils/storageService';
 
 interface EventCreationModalProps {
   onClose: () => void;
@@ -17,13 +18,12 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<EventFormData>();
 
   useEffect(() => {
-    // Fetch available storage providers from the backend
-    fetch('/api/storages', { method: 'OPTIONS' })
-      .then(res => res.json())
-      .then(data => {
-        setProviders(data.providers || []);
-        if (data.providers && data.providers.length > 0) {
-          setValue('storageProvider', data.providers[0].value);
+    // Fetch available storage providers from the backend using JWT
+    fetchStorageProviders()
+      .then((providers) => {
+        setProviders(providers);
+        if (providers && providers.length > 0) {
+          setValue('storageProvider', providers[0].value);
         }
       })
       .catch(() => setProviders([]));
