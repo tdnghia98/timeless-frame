@@ -12,6 +12,10 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.816.0",
+    "@aws-sdk/s3-request-presigner": "^3.816.0",
+    "@azure/storage-blob": "^12.27.0",
+    "@google-cloud/storage": "^7.16.0",
     "@hookform/resolvers": "^5.0.1",
     "@prisma/client": "^6.8.2",
     "@tailwindcss/postcss": "^4.1.6",
@@ -27,6 +31,7 @@
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.3.8",
     "react-hook-form": "^7.55.0",
+    "react-hot-toast": "^2.5.2",
     "tailwindcss": "^4.1.6",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"

@@ -1,7 +1,6 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 import { IFilesystemProvider, AbstractFilesystemProvider, UploadResult } from './filesystem';
-import { File as NextFile } from 'web-file-polyfill';
-import path from 'path';
+import { generateBlobSASQueryParameters, BlobSASPermissions, SASProtocol, StorageSharedKeyCredential } from '@azure/storage-blob';
 
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING!;
 const AZURE_CONTAINER = process.env.AZURE_CONTAINER!;
@@ -11,7 +10,7 @@ const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_C
 const containerClient = blobServiceClient.getContainerClient(AZURE_CONTAINER);
 
 export class AzureBlobProvider extends AbstractFilesystemProvider implements IFilesystemProvider {
-  async uploadFile(file: NextFile, options: { folderId?: string }): Promise<UploadResult | null> {
+  async uploadFile(file: File, options: { folderId?: string }): Promise<UploadResult | null> {
     const blobName = options.folderId ? `${options.folderId}/${file.name}` : file.name;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
     const arrayBuffer = await file.arrayBuffer();
@@ -19,12 +18,13 @@ export class AzureBlobProvider extends AbstractFilesystemProvider implements IFi
     await blockBlobClient.uploadData(buffer, {
       blobHTTPHeaders: { blobContentType: file.type },
     });
+    // Store only the canonical blob name, not a signed URL
     return {
       id: blobName,
       name: file.name,
-      url: `${AZURE_BASE_URL}/${blobName}`,
-      size: buffer.length,
       azureBlob: blobName,
+      size: buffer.length,
+      url: undefined, // Do not return a direct or signed URL
     };
   }
 

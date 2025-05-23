@@ -63,17 +63,11 @@ export const authOptions: NextAuthOptions = {
 		
 	],
 	callbacks: {
-		async signIn({ user }) {
-			console.log("backend signin", user);
-			return true;
-		},
 		async session({ session, token }) {
 			// Send properties to the client
-			console.log("App requesting session");
 			session.accessToken = token.accessToken as string;
 			session.refreshToken = token.refreshToken as string;
 			session.expiresAt = token.expiresAt as number;
-			console.log("Session:", session);
 
 			// In development, always return a mock session
 			// if (process.env.NODE_ENV === "development") {

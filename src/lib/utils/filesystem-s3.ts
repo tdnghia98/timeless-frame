@@ -1,7 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { IFilesystemProvider, AbstractFilesystemProvider, UploadResult } from './filesystem';
-import { File as NextFile } from 'web-file-polyfill';
-import path from 'path';
 
 const S3_BUCKET = process.env.AWS_S3_BUCKET!;
 const S3_REGION = process.env.AWS_S3_REGION!;
@@ -16,7 +14,7 @@ const s3 = new S3Client({
 });
 
 export class S3Provider extends AbstractFilesystemProvider implements IFilesystemProvider {
-  async uploadFile(file: NextFile, options: { folderId?: string }): Promise<UploadResult | null> {
+  async uploadFile(file: File, options: { folderId?: string }): Promise<UploadResult | null> {
     const key = options.folderId ? `${options.folderId}/${file.name}` : file.name;
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -26,12 +24,13 @@ export class S3Provider extends AbstractFilesystemProvider implements IFilesyste
       Body: buffer,
       ContentType: file.type,
     }));
+    // Store only the S3 key, not a signed URL
     return {
       id: key,
       name: file.name,
-      url: `${S3_BASE_URL}/${key}`,
-      size: buffer.length,
       s3Key: key,
+      size: buffer.length,
+      url: undefined, // Do not return a direct or signed URL
     };
   }
 

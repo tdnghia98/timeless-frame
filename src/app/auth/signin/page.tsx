@@ -40,7 +40,7 @@ export default function SignIn() {
 
   const handleDevLogin = async () => {
     // await fetch('/api/dev-login');
-    console.log("signIn");
+    console.log("dev signIn");
     await signIn('credentials', {
       email: 'jsmith@example.com',
       password: 'password',

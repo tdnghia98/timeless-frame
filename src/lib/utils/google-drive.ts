@@ -142,6 +142,17 @@ export async function uploadFileToDriveWithRefreshToken(
       media: media,
       fields: 'id, name, mimeType, webContentLink, webViewLink, thumbnailLink, size',
     });
+    const fileId = response.data.id;
+    // Make the file public (anyone with the link can view)
+    if (fileId) {
+      await drive.permissions.create({
+        fileId,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+    }
     return response.data as GoogleDriveFile;
   } catch (error) {
     console.error('Error uploading file with refresh token:', error);

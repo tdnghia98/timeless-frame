@@ -14,15 +14,20 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<StorageProviderOption[]>([]);
-  const { register, handleSubmit, formState: { errors } } = useForm<EventFormData>();
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm<EventFormData>();
 
   useEffect(() => {
     // Fetch available storage providers from the backend
     fetch('/api/storages', { method: 'OPTIONS' })
       .then(res => res.json())
-      .then(data => setProviders(data.providers || []))
+      .then(data => {
+        setProviders(data.providers || []);
+        if (data.providers && data.providers.length > 0) {
+          setValue('storageProvider', data.providers[0].value);
+        }
+      })
       .catch(() => setProviders([]));
-  }, []);
+  }, [setValue]);
 
   const onSubmit: SubmitHandler<EventFormData> = async (data) => {
     setIsSubmitting(true);
