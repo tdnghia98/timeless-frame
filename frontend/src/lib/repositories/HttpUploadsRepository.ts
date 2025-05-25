@@ -30,6 +30,6 @@ export class HttpUploadsRepository implements IUploadsRepository {
     return backendHttpClient.get<Upload[]>(`/uploads/user/${userId}`);
   }
   getByEventId(eventId: string): Promise<Upload[]> {
-    return backendHttpClient.get<Upload[]>(`/uploads/event/${eventId}`);
+    return backendHttpClient.get<Upload[]>(`/uploads?eventId=${eventId}`);
   }
 }

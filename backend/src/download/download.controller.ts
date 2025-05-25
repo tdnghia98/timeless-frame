@@ -1,4 +1,12 @@
-import { Controller, Get, Query, Req, Res, UnauthorizedException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Req,
+  Res,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Response, Request } from 'express';
 import { PrismaService } from '../prisma.service';
 import { decrypt } from '../lib/utils/crypto';
@@ -29,7 +37,9 @@ export class DownloadDriveController {
     if (!eventId || !fileId) {
       throw new NotFoundException('Missing eventId or fileId');
     }
-    const event = await this.prisma.event.findUnique({ where: { id: eventId } });
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
     if (!event || !event.authorRefreshToken) {
       throw new NotFoundException('Event or credentials not found');
     }
@@ -39,10 +49,16 @@ export class DownloadDriveController {
     const isOwner = false;
     try {
       if (thumb === '1') {
-        const meta = await drive.files.get({ fileId, fields: 'thumbnailLink, mimeType' });
+        const meta = await drive.files.get({
+          fileId,
+          fields: 'thumbnailLink, mimeType',
+        });
         const thumbnailLink = meta.data.thumbnailLink;
         const mimeType = meta.data.mimeType || '';
-        if (!thumbnailLink || (!mimeType.startsWith('image/') && !mimeType.startsWith('video/'))) {
+        if (
+          !thumbnailLink ||
+          (!mimeType.startsWith('image/') && !mimeType.startsWith('video/'))
+        ) {
           throw new NotFoundException();
         }
         const resp = await fetch(thumbnailLink);
@@ -53,11 +69,16 @@ export class DownloadDriveController {
         const buffer = Buffer.from(await resp.arrayBuffer());
         res.set({
           'Content-Type': contentType,
-          'Cache-Control': isOwner ? 'public, max-age=604800' : 'public, max-age=3600',
+          'Cache-Control': isOwner
+            ? 'public, max-age=604800'
+            : 'public, max-age=3600',
         });
         return res.send(buffer);
       } else {
-        const fileRes = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
+        const fileRes = await drive.files.get(
+          { fileId, alt: 'media' },
+          { responseType: 'stream' },
+        );
         const chunks: Buffer[] = [];
         await new Promise((resolve, reject) => {
           fileRes.data.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -67,18 +88,26 @@ export class DownloadDriveController {
         const buffer = Buffer.concat(chunks);
         let contentType = 'application/octet-stream';
         try {
-          const meta = await drive.files.get({ fileId, fields: 'mimeType, name' });
+          const meta = await drive.files.get({
+            fileId,
+            fields: 'mimeType, name',
+          });
           if (meta.data.mimeType) contentType = meta.data.mimeType;
         } catch {}
         res.set({
           'Content-Type': contentType,
           'Content-Disposition': isOwner ? 'inline' : 'inline',
-          'Cache-Control': isOwner ? 'public, max-age=604800' : 'public, max-age=3600',
+          'Cache-Control': isOwner
+            ? 'public, max-age=604800'
+            : 'public, max-age=3600',
         });
         return res.send(buffer);
       }
     } catch (e: any) {
-      throw new InternalServerErrorException({ error: 'Failed to fetch file from Google Drive', detail: e.message });
+      throw new InternalServerErrorException({
+        error: 'Failed to fetch file from Google Drive',
+        detail: e.message,
+      });
     }
   }
 }
