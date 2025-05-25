@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { IEventRepository } from './event.repository';
 import { EventFormData, User } from '../lib/types';
-import { v4 as uuidv4 } from 'uuid';
 import * as QRCode from 'qrcode';
 import { Prisma } from '@prisma/client';
 
@@ -12,8 +11,12 @@ export class EventsService {
     private readonly eventRepository: IEventRepository,
   ) {}
 
-  async createEvent(data: EventFormData, user: User) {
-    const eventId = uuidv4();
+  async createEvent(
+    eventId: string,
+    data: EventFormData,
+    user: User,
+    folderId: string,
+  ) {
     const shareUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/events/${eventId}`;
     const qrCode = await QRCode.toDataURL(shareUrl);
     // For now, skip folder creation and token encryption
@@ -26,7 +29,7 @@ export class EventsService {
       user: {
         connect: { email: user.email },
       },
-      folderId: '',
+      folderId, // Use the created Google Drive folderId
       shareUrl,
       qrCode,
       storageProvider: data.storageProvider || 'gdrive',

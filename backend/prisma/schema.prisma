@@ -46,5 +46,6 @@ model User {
   image        String?
   provider     String?
   passwordHash String?
+  refreshToken String? // <-- Add this line to store the encrypted Google refresh token
   Event        Event[]
 }

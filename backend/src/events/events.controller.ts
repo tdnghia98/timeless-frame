@@ -15,16 +15,55 @@ import { EventsService } from './events.service';
 import { EventFormData, User } from '../lib/types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserData } from '../auth/user.decorator';
+import { createDriveFolder } from '../lib/utils/google-drive';
+import { decrypt } from '../lib/utils/crypto';
+import { PrismaService } from '../prisma.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Controller('events')
 @UseGuards(JwtAuthGuard)
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post()
   async createEvent(@Body() data: EventFormData, @UserData() user: User) {
     try {
-      return await this.eventsService.createEvent(data, user);
+      // Fetch the user from the database to get the encrypted refresh token
+      const dbUser = await this.prisma.user.findUnique({
+        where: { email: user.email },
+      });
+      if (!dbUser?.refreshToken) {
+        throw new HttpException(
+          'Google account not connected. Please sign in with Google.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const eventId = uuidv4();
+      const decryptedRefreshToken = decrypt(dbUser.refreshToken);
+      const folderName = data.title || 'WedMemory Event';
+      const folderId = await createDriveFolder(
+        '',
+        decryptedRefreshToken,
+        // Use eventId to ensure unique folder names
+        `${folderName}_${eventId}`,
+      );
+      if (!folderId) {
+        throw new HttpException(
+          'Failed to create Google Drive folder',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+      // Pass folderId to the event creation service
+      return await this.eventsService.createEvent(
+        eventId,
+        data,
+        user,
+        folderId,
+      );
     } catch (error) {
       Logger.error('Error creating event', error);
       throw new HttpException(

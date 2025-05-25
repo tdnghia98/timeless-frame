@@ -11,7 +11,12 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@wedmemory/shared": ["../shared"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@wedmemory/shared": [
+        "../shared"
+      ]
     },
     "incremental": true,
     "skipLibCheck": true,

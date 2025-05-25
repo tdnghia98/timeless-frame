@@ -15,12 +15,15 @@ import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { PrismaService } from '@/prisma.service';
+import { encrypt } from '@/lib/utils/crypto';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get('google')
@@ -34,21 +37,43 @@ export class AuthController {
   async googleAuthRedirect(@Req() req: any, @Res() res: Response) {
     // User info is attached to req.user by GoogleStrategy
     const user = req.user;
+    if (!user.refreshToken) {
+      throw new UnauthorizedException(
+        'Google did not return a refresh token. Please remove this app from your Google account permissions and sign in again.',
+      );
+    }
     const redirectUri = user?.state || 'http://localhost:3000/dashboard';
     // Find or create user in DB
-    let dbUser = await this.authService.findUserByEmail(user.email);
+    let dbUser = await this.prisma.user.findUnique({
+      where: { email: user.email },
+    });
     if (!dbUser) {
-      dbUser = await this.authService.createUserWithPassword(
-        user.email,
-        '', // No password for Google users
-        user.name,
-        'google', // Set provider field
-      );
-    } else if (!dbUser.provider) {
+      dbUser = await this.prisma.user.create({
+        data: {
+          email: user.email,
+          passwordHash: '',
+          name: user.name,
+          provider: 'google',
+          refreshToken: user.refreshToken
+            ? encrypt(user.refreshToken)
+            : undefined, // Only store if present
+        },
+      });
+    }
+    if (!dbUser.provider) {
       // If user exists but provider is not set, update it
-      await this.authService.updateUserProvider(dbUser.email, 'google');
       dbUser.provider = 'google';
     }
+    if (user.refreshToken) {
+      dbUser.refreshToken = encrypt(user.refreshToken);
+    }
+    await this.prisma.user.update({
+      where: { email: dbUser.email },
+      data: dbUser,
+    });
+
+    // Optionally log a warning if refreshToken is missing
+
     // Issue JWT with user.email as sub
     const payload = {
       sub: dbUser.email,
@@ -67,7 +92,9 @@ export class AuthController {
   async login(@Body() body: { email: string; password: string }) {
     const { email, password } = body;
     // Find user by email
-    const user = await this.authService.findUserByEmail(email);
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -90,36 +117,18 @@ export class AuthController {
     };
   }
 
-  @Post('dev-register')
-  async devRegister(
-    @Body() body: { email: string; password: string; name?: string },
-  ) {
-    if (process.env.NODE_ENV !== 'development') {
-      throw new UnauthorizedException('Not allowed');
-    }
-    const { email, password, name } = body;
-    const passwordHash = await (await import('bcryptjs')).hash(password, 10);
-    let user = await this.authService.findUserByEmail(email);
-    if (!user) {
-      user = await this.authService.createUserWithPassword(
-        email,
-        passwordHash,
-        name,
-      );
-    } else {
-      // Update password if user exists
-      user = await this.authService.updateUserPassword(email, passwordHash);
-    }
-    return { success: true, user };
-  }
-
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMe(@Request() req) {
     // req.user is set by JwtStrategy
-    const user = await this.authService.findUserByEmail(req.user.email);
+    const user = await this.prisma.user.findUnique({
+      where: { email: req.user.email },
+    });
     if (!user) {
       throw new UnauthorizedException('User not found');
+    }
+    if (user.provider !== 'jwt') {
+      this.authService.validateOAuthLogin(req.user, user.provider); // No-op for JWT auth
     }
     return {
       accessToken: req.headers['authorization']?.replace('Bearer ', ''),

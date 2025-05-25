@@ -68,7 +68,8 @@ export class UploadsController {
         if (isInvalidGrantError(error)) {
           await emailer.sendMail({
             to: event.userEmail,
-            subject: 'Action Required: Reconnect your Google Drive to WedMemory',
+            subject:
+              'Action Required: Reconnect your Google Drive to WedMemory',
             text: `Hi!\n\nYour Google Drive connection for event '${event.title}' has expired or been revoked. Please sign in to WedMemory and reconnect your Google account to continue receiving uploads from your guests.\n\nThank you!`,
           });
           res.status(500).json({

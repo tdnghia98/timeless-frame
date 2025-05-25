@@ -7,10 +7,13 @@ const createDriveClient = (accessToken: string, refreshToken: string) => {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/auth/google/callback',
+    process.env.GOOGLE_CALLBACK_URL ||
+      'http://localhost:4000/auth/google/callback',
   );
   if (!refreshToken) {
-    console.error('[Google Drive] No refresh token found. This may cause invalid_grant errors.');
+    console.error(
+      '[Google Drive] No refresh token found. This may cause invalid_grant errors.',
+    );
   }
   oauth2Client.setCredentials({
     access_token: accessToken,
@@ -20,19 +23,45 @@ const createDriveClient = (accessToken: string, refreshToken: string) => {
 };
 
 // Create a new folder in Google Drive
-export async function createDriveFolder(accessToken: string, refreshToken: string, folderName: string): Promise<string | null> {
+export async function createDriveFolder(
+  accessToken: string,
+  refreshToken: string,
+  folderName: string,
+): Promise<string | null> {
   try {
     const drive = createDriveClient(accessToken, refreshToken);
+    // If there is no "WedMemory" folder, create it
+    const parentFolderName = 'WedMemory';
+    const parentFolderResponse = await drive.files.list({
+      q: `name='${parentFolderName}' and mimeType='application/vnd.google-apps.folder'`,
+      fields: 'files(id, name)',
+    });
+    if (parentFolderResponse.data.files.length === 0) {
+      // Create the "WedMemory" folder if it doesn't exist
+      const parentFolderMetadata = {
+        name: parentFolderName,
+        mimeType: 'application/vnd.google-apps.folder',
+      };
+      const parentFolderCreateResponse = await drive.files.create({
+        requestBody: parentFolderMetadata,
+        fields: 'id',
+      });
+      if (!parentFolderCreateResponse.data.id) {
+        throw new Error('Failed to create "WedMemory" folder');
+      }
+    }
     const folderMetadata = {
       name: folderName,
       mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentFolderResponse.data.files[0].id],
     };
-    
+
+    // Create the folder
     const response = await drive.files.create({
       requestBody: folderMetadata,
       fields: 'id',
     });
-    
+
     return response.data.id || null;
   } catch (error) {
     console.error('Error creating folder:', error);
@@ -42,10 +71,10 @@ export async function createDriveFolder(accessToken: string, refreshToken: strin
 
 // Upload a file to a specific folder in Google Drive
 export async function uploadFileToDrive(
-  accessToken: string, 
-  refreshToken: string, 
-  file: File, 
-  folderId: string
+  accessToken: string,
+  refreshToken: string,
+  file: File,
+  folderId: string,
 ): Promise<GoogleDriveFile | null> {
   try {
     const drive = createDriveClient(accessToken, refreshToken);
@@ -63,7 +92,8 @@ export async function uploadFileToDrive(
     const response = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
-      fields: 'id, name, mimeType, webContentLink, webViewLink, thumbnailLink, size',
+      fields:
+        'id, name, mimeType, webContentLink, webViewLink, thumbnailLink, size',
     });
     return response.data as GoogleDriveFile;
   } catch (error) {
@@ -74,18 +104,19 @@ export async function uploadFileToDrive(
 
 // Get files from a specific folder in Google Drive
 export async function getFilesFromFolder(
-  accessToken: string, 
-  refreshToken: string, 
-  folderId: string
+  accessToken: string,
+  refreshToken: string,
+  folderId: string,
 ): Promise<GoogleDriveFile[]> {
   try {
     const drive = createDriveClient(accessToken, refreshToken);
-    
+
     const response = await drive.files.list({
       q: `'${folderId}' in parents`,
-      fields: 'files(id, name, mimeType, webContentLink, webViewLink, thumbnailLink, size)',
+      fields:
+        'files(id, name, mimeType, webContentLink, webViewLink, thumbnailLink, size)',
     });
-    
+
     return response.data.files as GoogleDriveFile[];
   } catch (error) {
     console.error('Error getting files:', error);
@@ -94,14 +125,18 @@ export async function getFilesFromFolder(
 }
 
 // Delete a file from Google Drive
-export async function deleteFileFromDrive(accessToken: string, refreshToken: string, fileId: string): Promise<boolean> {
+export async function deleteFileFromDrive(
+  accessToken: string,
+  refreshToken: string,
+  fileId: string,
+): Promise<boolean> {
   try {
     const drive = createDriveClient(accessToken, refreshToken);
-    
+
     await drive.files.delete({
       fileId: fileId,
     });
-    
+
     return true;
   } catch (error) {
     console.error('Error deleting file:', error);

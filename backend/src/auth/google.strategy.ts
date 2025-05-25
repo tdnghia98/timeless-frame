@@ -11,9 +11,20 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       callbackURL:
         process.env.GOOGLE_CALLBACK_URL ||
         'http://localhost:4000/auth/callback/google',
-      scope: ['email', 'profile'],
+      scope: ['email', 'profile', 'https://www.googleapis.com/auth/drive'],
       passReqToCallback: true, // Enable req in validate
+      authorizationParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
     });
+  }
+
+  authorizationParams(): { [key: string]: string } {
+    return {
+      access_type: 'offline',
+      prompt: 'consent',
+    };
   }
 
   async validate(
