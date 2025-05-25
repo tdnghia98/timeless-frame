@@ -1,4 +1,4 @@
-import { Upload } from "@wedmemory/shared-types";
+import { Upload } from "@wedmemory/shared";
 import { backendHttpClient } from "../utils/backendHttpClient";
 import { CreateUploadFormData, IUploadsRepository } from "./IUploadsRepository";
 
@@ -27,7 +27,7 @@ export class HttpUploadsRepository implements IUploadsRepository {
     return backendHttpClient.get<Upload | null>(`/uploads/${id}`);
   }
   getByUserId(userId: string): Promise<Upload[]> {
-    return backendHttpClient.get<Upload[]>(`/uploads/user/${userId}`);
+    return backendHttpClient.get<Upload[]>(`/uploads?userId=${userId}`);
   }
   getByEventId(eventId: string): Promise<Upload[]> {
     return backendHttpClient.get<Upload[]>(`/uploads?eventId=${eventId}`);
