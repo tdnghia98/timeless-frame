@@ -16,6 +16,7 @@ export default function EventPage() {
   
   const fetchUploads = useCallback(async () => {
     try {
+      // TODO: call backend
       const response = await fetch(`/api/uploads?eventId=${eventId}`);
       if (!response.ok) throw new Error('Failed to load photos');
       const uploadsData = await response.json();
@@ -35,42 +36,10 @@ export default function EventPage() {
   const fetchEventDetails = async () => {
     try {
       setLoading(true);
-      // In a real application, you would fetch the event details from an API
-      // For this MVP, we're using mock data
-      
-      // Fetch event
-      // const eventResponse = await fetch(`/api/events/${eventId}`);
-      // if (!eventResponse.ok) throw new Error('Failed to load event');
-      // const eventData = await eventResponse.json();
-      
-      // Mock event data for MVP
-      const mockEvent: Event = {
-        id: eventId,
-        title: "Sample Event",
-        description: "This is a sample event for the MVP.",
-        date: new Date(),
-        userId: "sample-user-id",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        shareUrl: window.location.href,
-        qrCode: '',
-        folderId: 'sample-folder-id',
-      };
-      
-      setEvent(mockEvent);
-      
-      // Fetch uploads
-      // const uploadsResponse = await fetch(`/api/uploads?eventId=${eventId}`);
-      // if (!uploadsResponse.ok) throw new Error('Failed to load photos');
-      // const uploadsData = await uploadsResponse.json();
-      
-      // Mock uploads data for MVP
-      const mockUploads: Upload[] = [
-        // In a real app, this data would come from your API
-      ];
-      
-      setUploads(mockUploads);
-      
+      const data = await httpGet<Event>(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/events/${eventId}`
+      );
+      setEvent(data);
     } catch (err: any) {
       setError(err.message || 'An error occurred while loading the event');
     } finally {

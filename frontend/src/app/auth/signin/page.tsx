@@ -1,17 +1,15 @@
 'use client';
 
-import { signIn, useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { signIn } from '@/lib/utils/authService';
 
 export default function SignIn() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { update } = useSession();
   
   // Get error message from URL if it exists
   useEffect(() => {
@@ -30,7 +28,7 @@ export default function SignIn() {
       setIsLoading(true);
       setError(null);
       await signIn('google', {
-        callbackUrl: '/dashboard',
+        callbackUrl: `${window.location.origin}/dashboard`,
       });
     } catch (error) {
       setError('An unexpected error occurred. Please try again.');
@@ -39,21 +37,18 @@ export default function SignIn() {
   };
 
   const handleDevLogin = async () => {
-    // await fetch('/api/dev-login');
-    console.log("dev signIn");
-    await signIn('credentials', {
-      email: 'jsmith@example.com',
-      password: 'password',
-    });
-
-    // update({
-    //   id: '123',
-    //   name: 'John Doe',
-    //   email: 'john.doe@example.com',
-    //   image: 'https://example.com/image.png',
-    // });
-    
-    // router.replace('/dashboard');
+    try {
+      setIsLoading(true);
+      setError(null);
+      await signIn('credentials', {
+        email: 'jsmith@example.com',
+        password: 'password',
+        callbackUrl: '/dashboard',
+      });
+    } catch (error) {
+      setError('Dev login failed.');
+      setIsLoading(false);
+    }
   };
   
   return (

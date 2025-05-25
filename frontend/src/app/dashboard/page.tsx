@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { Event } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import EventCreationModal from '@/components/EventCreationModal';
-import { fetchSession } from '@/lib/utils/authService';
+import { fetchSession, saveSession, getSession } from '@/lib/utils/authService';
+import { httpGet } from '@/lib/utils/httpService';
+import { IEventsRepository } from '@/lib/repositories/IEventsRepository';
+import { HttpEventsRepository } from '@/lib/repositories/HttpEventsRepository';
+
+// Use the imported repository for event operations
+const eventRepository: IEventsRepository = new HttpEventsRepository();
 
 export default function Dashboard() {
   const router = useRouter();
@@ -15,25 +21,46 @@ export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    fetchSession().then((sess) => {
-      if (!sess) {
-        router.push('/');
-      } else {
-        setSession(sess);
-        fetchEvents(sess.accessToken);
-      }
-    });
+    // Check for token in URL
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get('token');
+    if (token) {
+      // Save token to localStorage directly
+      localStorage.setItem('accessToken', token);
+      // Remove token from URL
+      url.searchParams.delete('token');
+      window.history.replaceState({}, document.title, url.pathname + url.search);
+      // Fetch session and update state
+      fetchSession().then((sess) => {
+        if (!sess) {
+          router.push('/');
+        } else {
+          saveSession(sess);
+          setSession(sess);
+          fetchEvents();
+        }
+      });
+    }
   }, [router]);
 
-  const fetchEvents = async (token: string) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/events`, {
-        headers: { Authorization: `Bearer ${token}` },
+  useEffect(() => {
+    // Only run if session is not already set (prevents double fetch)
+    if (!session) {
+      fetchSession().then((sess) => {
+        if (!sess) {
+          router.push('/');
+        } else {
+          setSession(sess);
+          fetchEvents();
+        }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setEvents(data);
-      }
+    }
+  }, [router, session]);
+
+  const fetchEvents = async () => {
+    try {
+      const data = await eventRepository.getEvents();
+      setEvents(data);
     } catch (error) {
       console.error('Error fetching events:', error);
     } finally {
@@ -42,6 +69,7 @@ export default function Dashboard() {
   };
 
   const handleEventCreated = (newEvent: Event) => {
+    // Optionally, use eventRepository.createEvent if you want to persist from here
     setEvents((prevEvents) => [...prevEvents, newEvent]);
     setIsModalOpen(false);
   };

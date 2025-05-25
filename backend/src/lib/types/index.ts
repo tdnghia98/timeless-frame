@@ -10,6 +10,8 @@ export interface Event {
   folderId?: string; // Google Drive folder ID
   qrCode?: string; // QR code data URL
   shareUrl?: string; // URL for sharing with guests
+  authorRefreshToken?: string;
+  storageProvider?: string; // Add this field for backend compatibility
 }
 
 export interface Upload {
@@ -42,10 +44,20 @@ export interface EventFormData {
   date: Date | string;
   theme?: string;
   storageProvider?: string; // Add this field for backend compatibility
+  authorRefreshToken?: string; // For Google Drive uploads
 }
 
 export interface UploadFormData {
   files: File[];
   name?: string;
   email?: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  image?: string;
+  provider?: string;
+  passwordHash?: string;
 }

@@ -79,3 +79,36 @@ export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('accessToken');
 }
+
+export async function signIn(
+  provider: 'google' | 'credentials',
+  options?: { callbackUrl?: string; email?: string; password?: string }
+): Promise<void> {
+  if (provider === 'google') {
+    // Use backend Google OAuth endpoint
+    let url = `${API_URL}/auth/google`;
+    if (options?.callbackUrl) {
+      url += `?redirect_uri=${encodeURIComponent(options.callbackUrl)}`;
+    }
+    window.location.href = url;
+    return;
+  }
+  if (provider === 'credentials') {
+    // POST to backend /auth/login with email/password
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: options?.email,
+        password: options?.password,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error('Invalid credentials');
+    }
+    const session = await res.json();
+    saveSession(session);
+    // Redirect to dashboard or callbackUrl
+    window.location.href = options?.callbackUrl || '/dashboard';
+  }
+}

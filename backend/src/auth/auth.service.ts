@@ -11,7 +11,9 @@ export class AuthService {
 
   async validateOAuthLogin(profile: any, provider: string) {
     // Find or create user in DB
-    let user = await this.prisma.user.findUnique({ where: { email: profile.email } });
+    let user = await this.prisma.user.findUnique({
+      where: { email: profile.email },
+    });
     if (!user) {
       user = await this.prisma.user.create({
         data: {
@@ -22,10 +24,44 @@ export class AuthService {
         },
       });
     }
-    const payload = { sub: user.id, email: user.email, name: user.name };
+    const payload = { sub: user.email, email: user.email, name: user.name };
     return {
       accessToken: this.jwtService.sign(payload),
       user,
     };
+  }
+
+  async findUserByEmail(email: string) {
+    return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  async createUserWithPassword(
+    email: string,
+    passwordHash: string,
+    name?: string,
+    provider?: string,
+  ) {
+    return this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        name,
+        provider,
+      },
+    });
+  }
+
+  async updateUserPassword(email: string, passwordHash: string) {
+    return this.prisma.user.update({
+      where: { email },
+      data: { passwordHash },
+    });
+  }
+
+  async updateUserProvider(email: string, provider: string) {
+    return this.prisma.user.update({
+      where: { email },
+      data: { provider },
+    });
   }
 }

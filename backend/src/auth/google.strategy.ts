@@ -10,12 +10,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL:
         process.env.GOOGLE_CALLBACK_URL ||
-        'http://localhost:4000/auth/google/callback',
+        'http://localhost:4000/auth/callback/google',
       scope: ['email', 'profile'],
+      passReqToCallback: true, // Enable req in validate
     });
   }
 
   async validate(
+    req: any,
     accessToken: string,
     refreshToken: string,
     profile: any,
@@ -28,6 +30,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       picture: photos[0].value,
       accessToken,
       refreshToken,
+      state: req.query.state, // Pass state (redirect_uri) to controller
     };
     done(null, user);
   }

@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { useParams, useRouter } from "next/navigation";
-import { Event, Upload } from "@/lib/types";
+import { useParams } from "next/navigation";
 import Image from "next/image";
+import { IEventsRepository } from "@/lib/repositories/IEventsRepository";
+import { HttpEventsRepository } from "@/lib/repositories/HttpEventsRepository";
+import { IUploadsRepository } from "@/lib/repositories/IUploadsRepository";
+import { HttpUploadsRepository } from "@/lib/repositories/HttpUploadsRepository";
+import { Upload, Event } from "@wedmemory/shared"
 
 export default function ManageEventPage() {
-  const { id: eventId } = useParams();
-  const { data: session } = useSession();
-  const router = useRouter();
+  const { id: eventId } = useParams<{ id: string }>();
   const [event, setEvent] = useState<Event | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [tab, setTab] = useState<"photos" | "settings">("photos");
@@ -17,6 +18,8 @@ export default function ManageEventPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [eventForm, setEventForm] = useState({ title: "", description: "", date: "" });
+  const eventRepository: IEventsRepository = new HttpEventsRepository();
+  const uploadsRepository: IUploadsRepository = new HttpUploadsRepository();
 
   useEffect(() => {
     if (!eventId) return;
@@ -28,14 +31,12 @@ export default function ManageEventPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/events?eventId=${eventId}`);
-      if (!res.ok) throw new Error("Failed to load event");
-      const data = await res.json();
+      const data = await eventRepository.getEventById(eventId);
       setEvent(data);
       setEventForm({
         title: data.title,
         description: data.description,
-        date: data.date ? data.date.slice(0, 10) : "",
+        date: data.date ? String(data.date).slice(0, 10) : '',
       });
     } catch (e: any) {
       setError(e.message);
@@ -46,25 +47,20 @@ export default function ManageEventPage() {
 
   async function fetchUploads() {
     try {
-      const res = await fetch(`/api/uploads?eventId=${eventId}`);
-      if (!res.ok) throw new Error("Failed to load uploads");
-      const data = await res.json();
-      setUploads(data);
+      const uploads = await uploadsRepository.getByEventId(eventId);
+      setUploads(uploads);
     } catch (e: any) {
       setError(e.message);
     }
   }
 
   async function handlePhotoAction(uploadId: string, action: "approve" | "reject" | "delete" | "hide") {
-    // Implement API call for photo moderation
     try {
       setSaving(true);
-      const res = await fetch(`/api/uploads/moderate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadId, action }),
-      });
-      if (!res.ok) throw new Error(res.statusText);
+      await httpPost(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/uploads/moderate`,
+        { uploadId, action }
+      );
       await fetchUploads();
     } catch (e: any) {
       setError(e.message);
@@ -78,12 +74,10 @@ export default function ManageEventPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/events`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId, ...eventForm }),
-      });
-      if (!res.ok) throw new Error("Failed to update event");
+      await httpPut<Event>(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/events/${eventId}`,
+        eventForm
+      );
       await fetchEvent();
     } catch (e: any) {
       setError(e.message);

@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { EventFormData, Event } from '@/lib/types';
 import { StorageProviderOption } from '@/lib/types/models/storage-provider';
 import { fetchStorageProviders } from '@/lib/utils/storageService';
+import { IEventsRepository } from '@/lib/repositories/IEventsRepository';
+import { HttpEventsRepository } from '@/lib/repositories/HttpEventsRepository';
+import { EventFormData } from '@/lib/types';
 
 interface EventCreationModalProps {
   onClose: () => void;
@@ -16,6 +18,7 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<StorageProviderOption[]>([]);
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<EventFormData>();
+  const eventRepository: IEventsRepository = new HttpEventsRepository();
 
   useEffect(() => {
     // Fetch available storage providers from the backend using JWT
@@ -33,18 +36,7 @@ export default function EventCreationModal({ onClose, onEventCreated }: EventCre
     setIsSubmitting(true);
     setError(null);
     try {
-      const response = await fetch('/api/events', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create event');
-      }
-      const createdEvent = await response.json();
+      const createdEvent = await eventRepository.createEvent(data); // Cast for now, or adjust interface for EventFormData
       onEventCreated(createdEvent);
     } catch (err: any) {
       setError(err.message || 'An error occurred while creating the event');

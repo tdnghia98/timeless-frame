@@ -21,11 +21,17 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@wedmemory/shared": ["../shared"]
     }
   },
+    "references": [
+    {
+      "path": "../shared"
+    }
+  ],
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",

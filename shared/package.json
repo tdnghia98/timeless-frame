@@ -1,0 +1,11 @@
+{
+  "name": "@wedmemory/shared-types",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "jest --config jest.config.js"
+  },
+  "version": "1.0.0",
+  "main": "index.ts",
+  "types": "index.ts"
+}
